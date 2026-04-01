@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TokenDance — Agent Applications Powered by LLM Tokens</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --bg2: #0f1424;
+    --bg3: #141a2e;
+    --gold: #f5a623;
+    --gold-dim: #c4841a;
+    --coral: #ff6b4a;
+    --sky: #4a9eff;
+    --mint: #4affb4;
+    --lavender: #b07aff;
+    --text: #d4d8e8;
+    --dim: #5a6180;
+    --faint: rgba(255,255,255,.04);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+
+  /* ── Grain overlay ── */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    opacity: .025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 256px;
+  }
+
+  /* ── Typography ── */
+  h1, h2, h3 { font-family: 'Playfair Display', serif; font-weight: 400; }
+  .mono { font-family: 'Fira Code', monospace; }
+
+  a { color: var(--gold); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Reveal ── */
+  .rv { opacity: 0; transform: translateY(36px); transition: opacity .7s ease, transform .7s ease; }
+  .rv.vis { opacity: 1; transform: translateY(0); }
+  .rv.d1 { transition-delay: .1s; }
+  .rv.d2 { transition-delay: .22s; }
+  .rv.d3 { transition-delay: .36s; }
+  .rv.d4 { transition-delay: .5s; }
+  .rv.d5 { transition-delay: .64s; }
+  .rv.d6 { transition-delay: .78s; }
+
+  /* ── Sections ── */
+  section {
+    padding: 100px 40px;
+    max-width: 1300px;
+    margin: 0 auto;
+    position: relative;
+  }
+  @media (max-width: 700px) { section { padding: 60px 20px; } }
+
+  .section-label {
+    font-family: 'Fira Code', monospace;
+    font-size: .68rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: .7;
+    margin-bottom: 1rem;
+  }
+
+  /* ══════ HERO ══════ */
+  #hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  #hero canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+  .hero-z { position: relative; z-index: 2; }
+  .hero-title {
+    font-size: clamp(3.5rem, 9vw, 8rem);
+    line-height: .95;
+    letter-spacing: -.03em;
+  }
+  .hero-title .token { color: var(--gold); }
+  .hero-title .dance {
+    font-style: italic;
+    background: linear-gradient(135deg, var(--coral), var(--gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub {
+    margin-top: 1.5rem;
+    font-size: clamp(1rem, 1.8vw, 1.25rem);
+    color: var(--dim);
+    max-width: 560px;
+  }
+  .hero-cta {
+    margin-top: 2.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    background: linear-gradient(135deg, var(--gold), var(--coral));
+    color: var(--bg);
+    font-weight: 700;
+    font-size: .9rem;
+    border-radius: 60px;
+    letter-spacing: .04em;
+    transition: transform .3s, box-shadow .3s;
+    cursor: pointer;
+  }
+  .hero-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 40px rgba(245,166,35,.3);
+    text-decoration: none;
+  }
+  .scroll-hint {
+    position: absolute;
+    bottom: 36px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--dim);
+    font-size: .65rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    animation: float 2.5s ease-in-out infinite;
+  }
+  @keyframes float {
+    0%,100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(8px); }
+  }
+
+  /* ══════ WHAT IS ══════ */
+  .intro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+  }
+  @media (max-width: 800px) { .intro-grid { grid-template-columns: 1fr; gap: 30px; } }
+  .intro-grid h2 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    line-height: 1.15;
+  }
+  .intro-grid p { color: var(--dim); font-size: .95rem; margin-top: 1rem; }
+  .token-flow {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding: 24px;
+    background: var(--bg2);
+    border-radius: 16px;
+    border: 1px solid rgba(245,166,35,.08);
+    position: relative;
+    overflow: hidden;
+  }
+  .token-chip {
+    display: inline-block;
+    padding: 5px 12px;
+    background: rgba(245,166,35,.07);
+    border: 1px solid rgba(245,166,35,.15);
+    border-radius: 6px;
+    font-family: 'Fira Code', monospace;
+    font-size: .72rem;
+    color: var(--gold);
+    opacity: 0;
+    animation: chipIn .4s ease forwards;
+    white-space: nowrap;
+  }
+  @keyframes chipIn {
+    from { opacity: 0; transform: translateY(8px) scale(.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  /* ══════ AGENT SHOWCASE ══════ */
+  .agents-header {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+  .agents-header h2 {
+    font-size: clamp(2rem, 4vw, 3.2rem);
+  }
+
+  .agent-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  @media (max-width: 900px) { .agent-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 580px) { .agent-grid { grid-template-columns: 1fr; } }
+
+  .agent-card {
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,.05);
+    border-radius: 16px;
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color .4s, transform .4s, box-shadow .4s;
+    cursor: default;
+  }
+  .agent-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--card-accent);
+    opacity: .6;
+    transition: opacity .3s;
+  }
+  .agent-card:hover {
+    border-color: rgba(255,255,255,.1);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+  }
+  .agent-card:hover::before { opacity: 1; }
+
+  .agent-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    margin-bottom: 18px;
+    background: var(--card-accent-bg);
+    border: 1px solid var(--card-accent-border);
+  }
+
+  .agent-card h3 {
+    font-size: 1.2rem;
+    margin-bottom: .5rem;
+    color: #fff;
+  }
+  .agent-card p {
+    font-size: .82rem;
+    color: var(--dim);
+    line-height: 1.65;
+  }
+  .agent-tokens {
+    margin-top: 16px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .agent-tag {
+    font-family: 'Fira Code', monospace;
+    font-size: .6rem;
+    padding: 3px 9px;
+    border-radius: 4px;
+    background: var(--faint);
+    border: 1px solid rgba(255,255,255,.06);
+    color: var(--dim);
+  }
+
+  /* Card accent colors */
+  .agent-card.c-gold   { --card-accent: var(--gold);     --card-accent-bg: rgba(245,166,35,.08);  --card-accent-border: rgba(245,166,35,.18); }
+  .agent-card.c-coral  { --card-accent: var(--coral);    --card-accent-bg: rgba(255,107,74,.08);  --card-accent-border: rgba(255,107,74,.18); }
+  .agent-card.c-sky    { --card-accent: var(--sky);      --card-accent-bg: rgba(74,158,255,.08);  --card-accent-border: rgba(74,158,255,.18); }
+  .agent-card.c-mint   { --card-accent: var(--mint);     --card-accent-bg: rgba(74,255,180,.06);  --card-accent-border: rgba(74,255,180,.15); }
+  .agent-card.c-lav    { --card-accent: var(--lavender); --card-accent-bg: rgba(176,122,255,.08); --card-accent-border: rgba(176,122,255,.18); }
+  .agent-card.c-white  { --card-accent: #fff;            --card-accent-bg: rgba(255,255,255,.05); --card-accent-border: rgba(255,255,255,.1); }
+
+  /* ══════ HOW IT WORKS ══════ */
+  .how-flow {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    margin-top: 50px;
+    position: relative;
+  }
+  @media (max-width: 800px) {
+    .how-flow { flex-direction: column; }
+    .how-arrow { transform: rotate(90deg); }
+  }
+  .how-step {
+    flex: 1;
+    text-align: center;
+    padding: 36px 24px;
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,.04);
+    position: relative;
+  }
+  .how-step:first-child { border-radius: 16px 0 0 16px; }
+  .how-step:last-child { border-radius: 0 16px 16px 0; }
+  @media (max-width: 800px) {
+    .how-step:first-child { border-radius: 16px 16px 0 0; }
+    .how-step:last-child { border-radius: 0 0 16px 16px; }
+  }
+  .how-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.5rem;
+    color: var(--gold);
+    opacity: .3;
+    line-height: 1;
+  }
+  .how-step h3 {
+    font-size: 1.05rem;
+    color: #fff;
+    margin: .6rem 0 .4rem;
+  }
+  .how-step p {
+    font-size: .78rem;
+    color: var(--dim);
+    max-width: 220px;
+    margin: 0 auto;
+  }
+  .how-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    flex-shrink: 0;
+    color: var(--gold);
+    opacity: .3;
+    font-size: 1.2rem;
+  }
+
+  /* ══════ LIVE DEMO ══════ */
+  .demo-container {
+    margin-top: 40px;
+    background: var(--bg2);
+    border: 1px solid rgba(245,166,35,.1);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .demo-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 20px;
+    background: var(--bg3);
+    border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .demo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+  }
+  .demo-dot.r { background: #ff5f57; }
+  .demo-dot.y { background: #ffbd2e; }
+  .demo-dot.g { background: #28c840; }
+  .demo-title-bar {
+    flex: 1;
+    text-align: center;
+    font-family: 'Fira Code', monospace;
+    font-size: .7rem;
+    color: var(--dim);
+  }
+  .demo-body {
+    padding: 28px;
+    min-height: 280px;
+    font-family: 'Fira Code', monospace;
+    font-size: .8rem;
+    line-height: 1.8;
+    position: relative;
+  }
+  .demo-line {
+    opacity: 0;
+    transform: translateX(-10px);
+    animation: lineIn .3s ease forwards;
+  }
+  @keyframes lineIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .demo-prompt { color: var(--gold); }
+  .demo-response { color: var(--dim); }
+  .demo-token-highlight { color: var(--coral); }
+  .demo-agent { color: var(--sky); }
+  .demo-tool { color: var(--mint); }
+  .demo-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 16px;
+    background: var(--gold);
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+    vertical-align: middle;
+  }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* ══════ STATS ══════ */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    margin-top: 50px;
+  }
+  @media (max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-block {
+    text-align: center;
+    padding: 32px 16px;
+    background: var(--bg2);
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,.04);
+  }
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(2rem, 4vw, 3rem);
+    color: var(--gold);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: .75rem;
+    color: var(--dim);
+    margin-top: .5rem;
+    letter-spacing: .04em;
+  }
+
+  /* ══════ ARCHITECTURE DIAGRAM ══════ */
+  .arch-canvas {
+    width: 100%;
+    height: 400px;
+    border-radius: 16px;
+    margin-top: 40px;
+    background: var(--bg2);
+    border: 1px solid rgba(255,255,255,.04);
+  }
+
+  /* ══════ FOOTER ══════ */
+  footer {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--dim);
+    font-size: .78rem;
+    border-top: 1px solid rgba(255,255,255,.04);
+  }
+  footer .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+    margin-bottom: .8rem;
+  }
+
+  /* ══════ Decorative divider ══════ */
+  .dec {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 40px 0;
+    color: var(--dim);
+    opacity: .2;
+  }
+  .dec span { display: block; width: 40px; height: 1px; background: currentColor; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<section id="hero">
+  <canvas id="heroCanvas"></canvas>
+  <div class="hero-z">
+    <div class="section-label rv">Agent Framework for LLM Tokens</div>
+    <h1 class="hero-title rv d1">
+      <span class="token">Token</span><span class="dance">Dance</span>
+    </h1>
+    <p class="hero-sub rv d2">
+      Explore how autonomous agents choreograph LLM tokens to reason, act, and create.
+      Every generation is a performance.
+    </p>
+    <a href="#agents" class="hero-cta rv d3">Explore Agents &darr;</a>
+  </div>
+  <div class="scroll-hint">scroll to discover</div>
+</section>
+
+<!-- ══════════ WHAT IS ══════════ -->
+<section id="about">
+  <div class="intro-grid">
+    <div>
+      <div class="section-label rv">// what is tokendance</div>
+      <h2 class="rv d1">Tokens are the <em style="color:var(--gold)">atoms</em> of intelligence</h2>
+      <p class="rv d2">
+        Every thought an LLM produces is a sequence of tokens &mdash; fragments of language that carry meaning, intent, and capability. TokenDance is a showcase of agent architectures that orchestrate these tokens into purposeful action.
+      </p>
+      <p class="rv d3">
+        From single-turn reasoning to multi-agent swarms, each pattern represents a different choreography of the same fundamental unit: the token.
+      </p>
+    </div>
+    <div class="token-flow rv d2" id="tokenFlow"></div>
+  </div>
+</section>
+
+<div class="dec"><span></span>&loz;<span></span></div>
+
+<!-- ══════════ AGENT SHOWCASE ══════════ -->
+<section id="agents">
+  <div class="agents-header">
+    <div class="section-label rv">// agent catalog</div>
+    <h2 class="rv d1">Six patterns of <em style="color:var(--coral)">token choreography</em></h2>
+  </div>
+
+  <div class="agent-grid">
+    <div class="agent-card c-gold rv">
+      <div class="agent-icon">&#x1f4ac;</div>
+      <h3>Conversational Agent</h3>
+      <p>Multi-turn dialogue with persistent memory. Tokens carry context across exchanges, building a shared understanding over time.</p>
+      <div class="agent-tokens">
+        <span class="agent-tag">context-window</span>
+        <span class="agent-tag">memory</span>
+        <span class="agent-tag">persona</span>
+      </div>
+    </div>
+
+    <div class="agent-card c-coral rv d1">
+      <div class="agent-icon">&#x1f4bb;</div>
+      <h3>Code Generation Agent</h3>
+      <p>Translates intent into executable code. Token sequences become syntax trees, type-checked programs, and tested solutions.</p>
+      <div class="agent-tokens">
+        <span class="agent-tag">AST-aware</span>
+        <span class="agent-tag">iterative</span>
+        <span class="agent-tag">tool-use</span>
+      </div>
+    </div>
+
+    <div class="agent-card c-sky rv d2">
+      <div class="agent-icon">&#x1f50d;</div>
+      <h3>Research Agent</h3>
+      <p>Retrieves, synthesizes, and reasons over external knowledge. Tokens become queries, then analyses, then structured insights.</p>
+      <div class="agent-tokens">
+        <span class="agent-tag">RAG</span>
+        <span class="agent-tag">web-search</span>
+        <span class="agent-tag">citation</span>
+      </div>
+    </div>
+
+    <div class="agent-card c-mint rv d3">
+      <div class="agent-icon">&#x1f310;</div>
+      <h3>Multi-Agent Orchestrator</h3>
+      <p>A conductor that routes tasks to specialist agents. Tokens flow between models, each contributing its expertise to the ensemble.</p>
+      <div class="agent-tokens">
+        <span class="agent-tag">routing</span>
+        <span class="agent-tag">delegation</span>
+        <span class="agent-tag">consensus</span>
+      </div>
+    </div>
+
+    <div class="agent-card c-lav rv d4">
+      <div class="agent-icon">&#x1f527;</div>
+      <h3>Tool-Using Agent</h3>
+      <p>Extends cognition with external tools. The model generates structured calls &mdash; APIs, databases, calculators &mdash; then reasons over results.</p>
+      <div class="agent-tokens">
+        <span class="agent-tag">function-call</span>
+        <span class="agent-tag">schema</span>
+        <span class="agent-tag">feedback-loop</span>
+      </div>
+    </div>
+
+    <div class="agent-card c-white rv d5">
+      <div class="agent-icon">&#x1f3a8;</div>
+      <h3>Creative Agent</h3>
+      <p>Generates novel artifacts &mdash; stories, designs, music. Token sampling temperature becomes an artistic dial between precision and surprise.</p>
+      <div class="agent-tokens">
+        <span class="agent-tag">temperature</span>
+        <span class="agent-tag">style-transfer</span>
+        <span class="agent-tag">generative</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="dec"><span></span>&loz;<span></span></div>
+
+<!-- ══════════ HOW IT WORKS ══════════ -->
+<section id="how">
+  <div style="text-align:center;">
+    <div class="section-label rv">// the token lifecycle</div>
+    <h2 class="rv d1">From prompt to <em style="color:var(--sky)">action</em></h2>
+  </div>
+
+  <div class="how-flow rv d2">
+    <div class="how-step">
+      <div class="how-num">1</div>
+      <h3>Tokenize</h3>
+      <p>Natural language is split into subword tokens &mdash; the alphabet of thought</p>
+    </div>
+    <div class="how-arrow">&rarr;</div>
+    <div class="how-step">
+      <div class="how-num">2</div>
+      <h3>Reason</h3>
+      <p>Attention heads weave relationships across the full context window</p>
+    </div>
+    <div class="how-arrow">&rarr;</div>
+    <div class="how-step">
+      <div class="how-num">3</div>
+      <h3>Plan</h3>
+      <p>Chain-of-thought tokens map a path from question to solution</p>
+    </div>
+    <div class="how-arrow">&rarr;</div>
+    <div class="how-step">
+      <div class="how-num">4</div>
+      <h3>Act</h3>
+      <p>Output tokens trigger tool calls, code execution, or human-readable responses</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ LIVE DEMO ══════════ -->
+<section id="demo">
+  <div style="text-align:center;">
+    <div class="section-label rv">// live simulation</div>
+    <h2 class="rv d1">Watch the tokens <em style="color:var(--gold)">dance</em></h2>
+  </div>
+
+  <div class="demo-container rv d2">
+    <div class="demo-header">
+      <div class="demo-dot r"></div>
+      <div class="demo-dot y"></div>
+      <div class="demo-dot g"></div>
+      <div class="demo-title-bar">tokendance agent v0.1 &mdash; interactive session</div>
+    </div>
+    <div class="demo-body" id="demoBody"></div>
+  </div>
+</section>
+
+<div class="dec"><span></span>&loz;<span></span></div>
+
+<!-- ══════════ ARCHITECTURE ══════════ -->
+<section id="arch">
+  <div style="text-align:center;">
+    <div class="section-label rv">// architecture</div>
+    <h2 class="rv d1">Token flow <em style="color:var(--mint)">architecture</em></h2>
+    <p class="rv d2" style="color:var(--dim); max-width:520px; margin:.8rem auto 0; font-size:.9rem;">
+      An interactive view of how tokens move through a multi-agent system &mdash; from user input through orchestration to final output.
+    </p>
+  </div>
+  <canvas class="arch-canvas rv d3" id="archCanvas"></canvas>
+</section>
+
+<!-- ══════════ STATS ══════════ -->
+<section id="stats">
+  <div style="text-align:center;">
+    <div class="section-label rv">// by the numbers</div>
+    <h2 class="rv d1">The scale of the <em style="color:var(--lavender)">dance</em></h2>
+  </div>
+  <div class="stats-row">
+    <div class="stat-block rv d1">
+      <div class="stat-num" data-target="200" data-suffix="M+">0</div>
+      <div class="stat-label">Tokens processed daily by top agents</div>
+    </div>
+    <div class="stat-block rv d2">
+      <div class="stat-num" data-target="128" data-suffix="K">0</div>
+      <div class="stat-label">Context window (tokens)</div>
+    </div>
+    <div class="stat-block rv d3">
+      <div class="stat-num" data-target="50" data-suffix="ms">0</div>
+      <div class="stat-label">Avg token generation latency</div>
+    </div>
+    <div class="stat-block rv d4">
+      <div class="stat-num" data-target="6" data-suffix="">0</div>
+      <div class="stat-label">Agent archetypes</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FOOTER ══════════ -->
+<footer>
+  <div class="logo-text">TokenDance</div>
+  <p>Agent applications powered by LLM tokens &mdash; an open exploration.</p>
+  <p style="margin-top:.6rem; opacity:.5;">&copy; 2026 TokenDance. Built with curiosity.</p>
+</footer>
+
+<script>
+// ── Scroll reveal ──
+const obs = new IntersectionObserver(es => {
+  es.forEach(e => { if (e.isIntersecting) e.target.classList.add('vis'); });
+}, { threshold: .12 });
+document.querySelectorAll('.rv').forEach(el => obs.observe(el));
+
+// ── Hero particle canvas ──
+(function() {
+  const c = document.getElementById('heroCanvas');
+  const ctx = c.getContext('2d');
+  let W, H;
+  function resize() { W = c.width = c.offsetWidth; H = c.height = c.offsetHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  class Token {
+    constructor() { this.reset(true); }
+    reset(init) {
+      this.x = Math.random() * (W || 1200);
+      this.y = init ? Math.random() * (H || 800) : -20;
+      this.vy = .2 + Math.random() * .6;
+      this.vx = (Math.random() - .5) * .3;
+      this.size = 3 + Math.random() * 5;
+      this.alpha = .1 + Math.random() * .3;
+      this.char = String.fromCharCode(0x2580 + Math.floor(Math.random() * 32));
+      this.hue = Math.random() > .6 ? 32 : Math.random() > .5 ? 12 : 45; // gold/coral/amber
+    }
+    update() {
+      this.x += this.vx + Math.sin(this.y * .005) * .2;
+      this.y += this.vy;
+      if (this.y > H + 20) this.reset(false);
+    }
+    draw() {
+      ctx.save();
+      ctx.globalAlpha = this.alpha;
+      ctx.font = `${this.size}px "Fira Code"`;
+      ctx.fillStyle = `hsl(${this.hue}, 90%, 60%)`;
+      ctx.fillText(this.char, this.x, this.y);
+      ctx.restore();
+    }
+  }
+
+  const tokens = Array.from({ length: 120 }, () => new Token());
+
+  // Draw connections between nearby tokens
+  function drawConnections() {
+    for (let i = 0; i < tokens.length; i++) {
+      for (let j = i + 1; j < tokens.length; j++) {
+        const dx = tokens[i].x - tokens[j].x;
+        const dy = tokens[i].y - tokens[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < 80) {
+          ctx.beginPath();
+          ctx.moveTo(tokens[i].x, tokens[i].y);
+          ctx.lineTo(tokens[j].x, tokens[j].y);
+          ctx.strokeStyle = `rgba(245,166,35,${.06 * (1 - d/80)})`;
+          ctx.lineWidth = .5;
+          ctx.stroke();
+        }
+      }
+    }
+  }
+
+  function frame() {
+    ctx.clearRect(0, 0, W, H);
+    tokens.forEach(t => { t.update(); t.draw(); });
+    drawConnections();
+    requestAnimationFrame(frame);
+  }
+  frame();
+})();
+
+// ── Token flow animation ──
+(function() {
+  const container = document.getElementById('tokenFlow');
+  const words = [
+    'The', 'agent', 'processes', 'user', 'intent', 'through', 'token',
+    'sequences', ',', 'routing', 'each', 'sub', '-task', 'to',
+    'specialized', 'models', '.', 'Results', 'are', 'composed',
+    'back', 'into', 'coherent', 'output', 'tokens', '.'
+  ];
+
+  const flowObs = new IntersectionObserver(es => {
+    if (es[0].isIntersecting) {
+      container.innerHTML = '';
+      words.forEach((w, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'token-chip';
+        chip.textContent = w;
+        chip.style.animationDelay = `${i * .06}s`;
+        container.appendChild(chip);
+      });
+      flowObs.disconnect();
+    }
+  }, { threshold: .4 });
+  flowObs.observe(container);
+})();
+
+// ── Demo terminal simulation ──
+(function() {
+  const body = document.getElementById('demoBody');
+  const lines = [
+    { cls: 'demo-prompt', text: '> user: "Summarize the latest research on scaling laws"' },
+    { cls: 'demo-agent', text: '[agent] Planning: decompose into 3 sub-tasks...' },
+    { cls: 'demo-tool', text: '[tool:search] querying arxiv for "scaling laws LLM 2025"...' },
+    { cls: 'demo-tool', text: '[tool:search] found 12 papers, filtering by relevance...' },
+    { cls: 'demo-agent', text: '[agent] Reasoning: extracting key findings from top 4 papers...' },
+    { cls: 'demo-token-highlight', text: '  tokens: [scaling, laws, follow, power-law, relationships, ...]' },
+    { cls: 'demo-agent', text: '[agent] Synthesizing across sources...' },
+    { cls: 'demo-response', text: '[output] "Recent research confirms that LLM capabilities' },
+    { cls: 'demo-response', text: '  scale predictably with compute, data, and parameters.' },
+    { cls: 'demo-response', text: '  Key finding: emergent abilities appear at critical thresholds..."' },
+    { cls: 'demo-agent', text: '[agent] Task complete. 847 tokens generated, 3 tools used.' },
+  ];
+
+  let running = false;
+  const demoObs = new IntersectionObserver(es => {
+    if (es[0].isIntersecting && !running) {
+      running = true;
+      body.innerHTML = '';
+      lines.forEach((l, i) => {
+        setTimeout(() => {
+          const div = document.createElement('div');
+          div.className = `demo-line ${l.cls}`;
+          div.style.animationDelay = '0s';
+          div.textContent = l.text;
+          body.appendChild(div);
+          // Auto-scroll
+          body.scrollTop = body.scrollHeight;
+          // Add cursor to last line
+          body.querySelectorAll('.demo-cursor').forEach(c => c.remove());
+          if (i === lines.length - 1) {
+            const cur = document.createElement('span');
+            cur.className = 'demo-cursor';
+            div.appendChild(cur);
+          }
+        }, i * 450);
+      });
+    }
+  }, { threshold: .3 });
+  demoObs.observe(body);
+})();
+
+// ── Architecture canvas ──
+(function() {
+  const c = document.getElementById('archCanvas');
+  const ctx = c.getContext('2d');
+
+  function resize() {
+    const rect = c.getBoundingClientRect();
+    c.width = rect.width * 2;
+    c.height = rect.height * 2;
+    ctx.scale(2, 2);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const nodes = [
+    { id: 'user',   label: 'User Input',     x: .08, y: .5,  color: '#f5a623', r: 28 },
+    { id: 'tok',    label: 'Tokenizer',       x: .24, y: .5,  color: '#ffbd4a', r: 24 },
+    { id: 'orch',   label: 'Orchestrator',    x: .44, y: .5,  color: '#ff6b4a', r: 32 },
+    { id: 'reason', label: 'Reasoning',       x: .64, y: .25, color: '#4a9eff', r: 24 },
+    { id: 'tool',   label: 'Tool Use',        x: .64, y: .75, color: '#4affb4', r: 24 },
+    { id: 'synth',  label: 'Synthesizer',     x: .78, y: .5,  color: '#b07aff', r: 26 },
+    { id: 'out',    label: 'Output Tokens',   x: .93, y: .5,  color: '#f5a623', r: 28 },
+  ];
+
+  const edges = [
+    ['user','tok'], ['tok','orch'], ['orch','reason'], ['orch','tool'],
+    ['reason','synth'], ['tool','synth'], ['synth','out']
+  ];
+
+  // Particles flowing along edges
+  class Particle {
+    constructor(edge) {
+      this.edge = edge;
+      this.t = 0;
+      this.speed = .003 + Math.random() * .004;
+      this.offset = (Math.random() - .5) * 6;
+    }
+    update() {
+      this.t += this.speed;
+      if (this.t > 1) this.t = 0;
+    }
+  }
+
+  const particles = [];
+  edges.forEach(e => {
+    for (let i = 0; i < 4; i++) {
+      const p = new Particle(e);
+      p.t = Math.random();
+      particles.push(p);
+    }
+  });
+
+  function getNode(id) { return nodes.find(n => n.id === id); }
+
+  function draw() {
+    const W = c.width / 2, H = c.height / 2;
+    ctx.clearRect(0, 0, W, H);
+
+    // Edges
+    edges.forEach(([a, b]) => {
+      const na = getNode(a), nb = getNode(b);
+      ctx.beginPath();
+      ctx.moveTo(na.x * W, na.y * H);
+      ctx.lineTo(nb.x * W, nb.y * H);
+      ctx.strokeStyle = 'rgba(255,255,255,.06)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+
+    // Particles
+    particles.forEach(p => {
+      p.update();
+      const na = getNode(p.edge[0]), nb = getNode(p.edge[1]);
+      const x = na.x * W + (nb.x * W - na.x * W) * p.t;
+      const y = na.y * H + (nb.y * H - na.y * H) * p.t + p.offset;
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(245,166,35,${.3 + .5 * Math.sin(p.t * Math.PI)})`;
+      ctx.fill();
+    });
+
+    // Nodes
+    nodes.forEach(n => {
+      const x = n.x * W, y = n.y * H;
+      // Glow
+      const g = ctx.createRadialGradient(x, y, 0, x, y, n.r * 2);
+      g.addColorStop(0, n.color + '15');
+      g.addColorStop(1, 'transparent');
+      ctx.fillStyle = g;
+      ctx.fillRect(x - n.r * 2, y - n.r * 2, n.r * 4, n.r * 4);
+
+      // Circle
+      ctx.beginPath();
+      ctx.arc(x, y, n.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#0f1424';
+      ctx.fill();
+      ctx.strokeStyle = n.color + '60';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Label
+      ctx.font = '500 10px DM Sans';
+      ctx.fillStyle = n.color;
+      ctx.textAlign = 'center';
+      ctx.fillText(n.label, x, y + n.r + 18);
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  const archObs = new IntersectionObserver(es => {
+    if (es[0].isIntersecting) { draw(); archObs.disconnect(); }
+  }, { threshold: .15 });
+  archObs.observe(c);
+})();
+
+// ── Stat counter animation ──
+(function() {
+  const statNums = document.querySelectorAll('.stat-num[data-target]');
+  const statObs = new IntersectionObserver(es => {
+    es.forEach(e => {
+      if (e.isIntersecting) {
+        const el = e.target;
+        const target = +el.dataset.target;
+        const suffix = el.dataset.suffix || '';
+        let current = 0;
+        const step = Math.max(1, Math.floor(target / 40));
+        const interval = setInterval(() => {
+          current += step;
+          if (current >= target) { current = target; clearInterval(interval); }
+          el.textContent = current + suffix;
+        }, 30);
+        statObs.unobserve(el);
+      }
+    });
+  }, { threshold: .5 });
+  statNums.forEach(el => statObs.observe(el));
+})();
+</script>
+</body>
+</html>
